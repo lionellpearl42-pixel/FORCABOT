@@ -5,37 +5,46 @@ from telegram.ext import (
     CommandHandler,
     MessageHandler,
     ContextTypes,
-    filters
+    filters,
 )
 
 from jogo import iniciar_jogo, tentar_letra
 from torneio import atualizar_pontuacao, ranking
-from convocacao import iniciar_scheduler
+
+# =============================
+# CONFIGURAÇÕES
+# =============================
 
 TOKEN = os.getenv("BOT_TOKEN")
-CHAT_ID = os.getenv("CHAT_ID")
+CHAT_ID = os.getenv("CHAT_ID")  # Ex: -1001234567890
 
 user_jogos = {}
 
-# ---------------- START ----------------
+# =============================
+# COMANDOS
+# =============================
+
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
-        "🤖 Bem-vindo ao Bot de Forca!\nUse /jogar para começar."
+        "🤖 Bem-vindo ao Bot de Forca!\n\n"
+        "Use /jogar para começar.\n"
+        "Use /ranking para ver os melhores."
     )
 
-# ---------------- JOGAR ----------------
+
 async def jogar(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.from_user.id
+
     user_jogos[user_id] = iniciar_jogo()
     jogo = user_jogos[user_id]
 
     await update.message.reply_text(
-        f"🧠 Dica: {jogo['dica']}\n"
+        f"🧠 Dica: {jogo['dica']}\n\n"
         f"{' '.join(jogo['acertos'])}\n"
-        f"Tentativas: {jogo['tentativas']}"
+        f"🎯 Tentativas: {jogo['tentativas']}"
     )
 
-# ---------------- LETRA ----------------
+
 async def letra(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.from_user.id
 
@@ -49,35 +58,70 @@ async def letra(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if acertou and fim:
         await update.message.reply_text(
-            f"🎉 Parabéns! Você acertou: {jogo['palavra']}"
+            f"🎉 PARABÉNS!\nVocê acertou: {jogo['palavra']}\n+10 pontos!"
         )
+
         atualizar_pontuacao(user_id, 10)
         del user_jogos[user_id]
 
     elif not acertou and fim:
         await update.message.reply_text(
-            f"💀 Fim de jogo! A palavra era: {jogo['palavra']}"
+            f"💀 Fim de jogo!\nA palavra era: {jogo['palavra']}"
         )
+
         del user_jogos[user_id]
 
     else:
         await update.message.reply_text(
             f"{' '.join(jogo['acertos'])}\n"
-            f"Tentativas restantes: {jogo['tentativas']}"
+            f"❌ Tentativas restantes: {jogo['tentativas']}"
         )
 
-# ---------------- RANKING ----------------
+
 async def ver_ranking(update: Update, context: ContextTypes.DEFAULT_TYPE):
     r = ranking()
-    msg = "🏆 Ranking Top 10:\n"
+
+    if not r:
+        await update.message.reply_text("Ainda não há pontuações.")
+        return
+
+    msg = "🏆 RANKING TOP 10\n\n"
 
     for i, (nome, pontos) in enumerate(r, start=1):
         msg += f"{i}. {nome} - {pontos} pts\n"
 
     await update.message.reply_text(msg)
 
-# ---------------- MAIN ----------------
+
+# =============================
+# CONVOCAÇÃO AUTOMÁTICA
+# =============================
+
+async def convocar(context: ContextTypes.DEFAULT_TYPE):
+    await context.bot.send_message(
+        chat_id=context.job.chat_id,
+        text="🚨 NOVO TORNEIO DE FORCA!\nUse /jogar para participar!"
+    )
+
+
+def iniciar_scheduler(app, chat_id):
+    # A cada 2 horas (7200 segundos)
+    app.job_queue.run_repeating(
+        convocar,
+        interval=7200,
+        first=15,
+        chat_id=chat_id,
+    )
+
+
+# =============================
+# MAIN
+# =============================
+
 def main():
+    if not TOKEN:
+        raise ValueError("BOT_TOKEN não definido nas variáveis de ambiente.")
+
     app = ApplicationBuilder().token(TOKEN).build()
 
     app.add_handler(CommandHandler("start", start))
@@ -86,10 +130,12 @@ def main():
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, letra))
 
     # Inicia convocação automática
-    iniciar_scheduler(TOKEN, CHAT_ID)
+    if CHAT_ID:
+        iniciar_scheduler(app, CHAT_ID)
 
     print("✅ Bot rodando...")
     app.run_polling()
+
 
 if __name__ == "__main__":
     main()
