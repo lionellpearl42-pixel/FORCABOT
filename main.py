@@ -4,8 +4,9 @@ from jogo import iniciar_jogo, tentar_letra
 from torneio import atualizar_pontuacao, ranking
 from convocacao import iniciar_scheduler
 
-TOKEN = "SEU_TOKEN_DO_BOT"
-CHAT_ID = "@seu_grupo"  # Grupo do Telegram
+import os
+TOKEN = os.getenv("BOT_TOKEN")
+CHAT_ID = os.getenv("CHAT_ID")
 
 updater = Updater(TOKEN)
 dp = updater.dispatcher
