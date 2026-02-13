@@ -35,14 +35,15 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def jogar(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.from_user.id
 
-    user_jogos[user_id] = iniciar_jogo()
-    jogo = user_jogos[user_id]
+    jogo = await iniciar_jogo()
+    user_jogos[user_id] = jogo
 
     await update.message.reply_text(
         f"🧠 Dica: {jogo['dica']}\n\n"
         f"{' '.join(jogo['acertos'])}\n"
         f"🎯 Tentativas: {jogo['tentativas']}"
     )
+
 
 
 async def letra(update: Update, context: ContextTypes.DEFAULT_TYPE):
