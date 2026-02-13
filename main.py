@@ -57,13 +57,19 @@ async def letra(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     acertou, fim = tentar_letra(jogo, l)
 
-    if acertou and fim:
-        await update.message.reply_text(
-            f"🎉 PARABÉNS!\nVocê acertou: {jogo['palavra']}\n+10 pontos!"
-        )
+   if acertou and fim:
+    usuario = update.message.from_user
+    mention = f"<a href='tg://user?id={usuario.id}'>{usuario.first_name}</a>"
 
-        atualizar_pontuacao(user_id, 10)
-        del user_jogos[user_id]
+    await update.message.reply_html(
+        f"🎉 {mention} VENCEU!\n\n"
+        f"Palavra: <b>{jogo['palavra']}</b>\n"
+        f"+10 pontos!"
+    )
+
+    atualizar_pontuacao(str(usuario.id), 10)
+    del user_jogos[user_id]
+
 
     elif not acertou and fim:
         await update.message.reply_text(
